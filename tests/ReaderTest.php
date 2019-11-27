@@ -327,4 +327,28 @@ class ReaderTest extends TestCase
             $this->assertSame('$rowIndexStart must be a non negativ Integer.', $exception->getMessage());
         }
     }
+
+    /**
+     * @testdox Tests the Header from a tab separated file
+     * @covers ::getHeader
+     * @throws CsvException
+     */
+    public function testGetHeaderFromTxtFile(): void {
+        $reader = new Reader(__DIR__ . '/testfile.txt');
+        $reader->getStrategy()->setDelimiter("\t");
+        $this->assertSame(
+            $this->expectedHeader,
+            $reader->getHeader()
+        );
+    }
+
+    public function testGetRecordTxtTabFile(): void {
+        $reader = new Reader(__DIR__ . '/testfile.txt');
+        $reader->getStrategy()->setDelimiter("\t");
+        $readRecord = $reader->readRecord();
+        $this->assertSame(
+            $this->expectedFirstRecord,
+            $readRecord
+        );
+    }
 }
