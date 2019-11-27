@@ -1,17 +1,20 @@
 <?php
-declare (strict_types = 1);
+declare (strict_types=1);
 
 namespace vansari\csv;
 
 use Iterator;
+use OutOfRangeException;
 use SplFileObject;
+use vansari\csv\encoding\Encoder;
 
 /**
  * Class Reader
  * @package vansari\csv
  * @link https://tools.ietf.org/html/rfc4180
  */
-class Reader implements Iterator {
+class Reader implements Iterator
+{
 
     public const EXT_CSV = 'csv';
     public const EXT_TXT = 'txt';
@@ -24,7 +27,7 @@ class Reader implements Iterator {
     /**
      * @var array|false|null
      */
-    private $currentRecord;
+    private $currentRecord = null;
 
     /**
      * @var array
@@ -60,12 +63,18 @@ class Reader implements Iterator {
      * @param Strategy|null $strategy
      * @throws CsvException
      */
-    public function __construct(string $file, ?Strategy $strategy = null) {
+    public function __construct(string $file)
+    {
         $this->setFileObject($file);
-        $this->strategy = $strategy ?? new Strategy();
+        $this->strategy = Strategy::createStrategy();
     }
 
-    private function headerRead(): void {
+    /**
+     * Read the Header first (if not already read), convert it to UTF-8 and set the pointer to next row
+     * It is possible to skip leading lines in example the file contains empty or unnecessary lines
+     */
+    private function headerRead(): void
+    {
         if (false === $this->getStrategy()->hasHeader() || true === $this->headerRead) {
             return;
         }
@@ -79,7 +88,7 @@ class Reader implements Iterator {
             }
             $this->linesSkipped = true;
         }
-        $this->header = $this->current();
+        $this->header = $this->convertRowToUtf8($this->current());
         $this->headerRead = true;
         $this->next();
     }
@@ -87,35 +96,97 @@ class Reader implements Iterator {
     /**
      * @return string
      */
-    public function getFile(): string {
+    public function getFile(): string
+    {
         return $this->fileObject->getPathname();
     }
 
-    public function getHeader(): array {
+    /**
+     * Returns the Header
+     * @return array
+     */
+    public function getHeader(): array
+    {
         $this->headerRead();
 
         return $this->header;
     }
 
     /**
-     * @param int $searchIndex
+     * Returns the utf-8 converted record from the specified index
+     * @param int $lineIndex - zero based $rowIndex without header
      * @return array|null
+     * @throws CsvException
      */
-    public function getRecordAtIndex(int $searchIndex): ?array {
-        $this->rewind();
-        while ($this->valid()) {
-            if ($this->key() === $searchIndex) {
-                return $this->current();
-            }
+    public function readRecordAtIndex(int $lineIndex): ?array
+    {
+        if (0 > $lineIndex) {
+            throw new OutOfRangeException('$lineIndex must be a non negativ Integer.');
+        }
+        if (($rowCount = $this->getRecordCount()) < $lineIndex) {
+            throw new OutOfRangeException(
+                '$lineIndex is greater than the row count. File contains ' . $rowCount . ' rows.'
+            );
         }
 
-        return null;
+        $this->rewind();
+        $row = null;
+        do {
+            $row = $this->readRecord();
+        } while ($this->valid() && $this->getRowIndex() !== $lineIndex);
+
+        return $row;
+    }
+
+    /**
+     * Returns all Records between the given start line and the given endline
+     * @param int $rowIndexStart - start row index
+     * @param int $rowIndexStop - end row index
+     * @return array
+     * @throws CsvException - if an error occurred while reading
+     */
+    public function readRecordsOfRange(int $rowIndexStart, int $rowIndexStop): array
+    {
+        if (0 > $rowIndexStart) {
+            throw new OutOfRangeException('$rowIndexStart must be a non negativ Integer.');
+        }
+        if (($rowCount = $this->getRecordCount()) < $rowIndexStop) {
+            throw new OutOfRangeException(
+                '$rowIndexStop is greater than the row count. File contains ' . $rowCount . ' rows.'
+            );
+        }
+        $records = [];
+        // Set the record pointer to the start index
+        $this->setRecordPointerToIndex($rowIndexStart);
+
+        do {
+            $records[] = $this->readRecord();
+        } while ($this->valid() && $this->getRowIndex() !== $rowIndexStop);
+
+        return $records;
+    }
+
+    /**
+     * @param bool $asAssociative
+     * @return array
+     * @throws CsvException
+     */
+    public function readAllRecords(): array
+    {
+        $records = [];
+        $this->rewind();
+        while ($this->valid()) {
+            $records[] = $this->readRecord();
+        }
+
+        return $records;
     }
 
     /**
      * @return Strategy
      */
-    public function getStrategy(): Strategy {
+    public function getStrategy(): Strategy
+    {
         return $this->strategy;
     }
 
@@ -123,7 +194,8 @@ class Reader implements Iterator {
      * @param string $file
      * @throws CsvException
      */
-    public function validateFile(string $file): void {
+    public function validateFile(string $file): void
+    {
         if ('' === $file) {
             throw CsvException::paramError(
                 'Parameter $file must be an non empty string',
@@ -150,7 +222,8 @@ class Reader implements Iterator {
      * @return $this
      * @throws CsvException
      */
-    public function setFileObject(string $file): self {
+    public function setFileObject(string $file): self
+    {
         $this->validateFile($file);
         $this->fileObject = new SplFileObject($file);
         $this->fileObject->setFlags(SplFileObject::READ_CSV);
@@ -158,17 +231,24 @@ class Reader implements Iterator {
         return $this;
     }
 
-    private function convertEncoding(array $row): array {
-
+    /**
+     * @param array $row
+     * @return array
+     */
+    private function convertRowToUtf8(array $row): array
+    {
+        return Encoder::convertFrom($row, $this->getStrategy()->getEncoding());
     }
+
     /**
      * Return the current element
      * @link https://php.net/manual/en/iterator.current.php
      * @return mixed Can return any type.
      * @since 5.0.0
      */
-    public function current() {
-        return $this->currentRecord = $this->fileObject->fgetcsv(
+    public function current()
+    {
+        return $this->fileObject->fgetcsv(
             $this->getStrategy()->getDelimiter(),
             $this->getStrategy()->getEnclosure(),
             $this->getStrategy()->getEscape()
@@ -181,7 +261,8 @@ class Reader implements Iterator {
      * @return void Any returned value is ignored.
      * @since 5.0.0
      */
-    public function next() {
+    public function next()
+    {
         $this->rowIndex++;
         $this->fileObject->next();
     }
@@ -192,7 +273,8 @@ class Reader implements Iterator {
      * @return mixed scalar on success, or null on failure.
      * @since 5.0.0
      */
-    public function key() {
+    public function key()
+    {
         return $this->fileObject->key();
     }
 
@@ -203,7 +285,8 @@ class Reader implements Iterator {
      * Returns true on success or false on failure.
      * @since 5.0.0
      */
-    public function valid() {
+    public function valid()
+    {
         return $this->fileObject->valid();
     }
 
@@ -213,12 +296,18 @@ class Reader implements Iterator {
      * @return void Any returned value is ignored.
      * @since 5.0.0
      */
-    public function rewind() {
+    public function rewind()
+    {
         $this->rowIndex = 0;
         $this->fileObject->rewind();
     }
 
-    public function getRecordCount(): int {
+    /**
+     * @return int
+     * @throws CsvException
+     */
+    public function getRecordCount(): int
+    {
         while ($this->valid()) {
             $this->readRecord();
         }
@@ -227,12 +316,19 @@ class Reader implements Iterator {
     }
 
     /**
-     * Read the current row and moves the pointer to the next Record
+     * Read the current row and convert them to UTF-8 and moves the pointer to the next Record
+     * Skip empty lines if it is set
+     *
      * @return array
+     * @throws CsvException
      */
-    public function readRecord(): array {
+    public function readRecord(): array
+    {
         $this->headerRead();
-        $this->current();
+        $this->currentRecord = $this->current();
+        if (false === $this->currentRecord) {
+            throw CsvException::readError(error_get_last()['message'] ?? null);
+        }
         $this->next();
         if ($this->getStrategy()->doSkipEmptyLines()) {
             while ($this->valid() && [] === $this->currentRecord) {
@@ -240,6 +336,38 @@ class Reader implements Iterator {
             }
         }
 
+        if ($this->getStrategy()->hasHeader() && $this->getStrategy()->asAssociative()) {
+            $this->currentRecord = array_combine($this->getHeader(), $this->currentRecord);
+        }
+
+        return $this->convertRowToUtf8($this->currentRecord);
+    }
+
+    /**
+     * @return array|false|null
+     */
+    public function getCurrentRecord()
+    {
         return $this->currentRecord;
+    }
+
+    /**
+     * @param int $index
+     * @throws CsvException
+     */
+    private function setRecordPointerToIndex(int $index): void
+    {
+        $this->rewind();
+        while ($this->valid() && $this->getRowIndex() < $index) {
+            $this->readRecord();
+        }
+    }
+
+    /**
+     * @return int
+     */
+    private function getRowIndex(): int
+    {
+        return $this->rowIndex;
     }
 }
