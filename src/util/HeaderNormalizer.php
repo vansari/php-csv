@@ -31,9 +31,12 @@ class HeaderNormalizer
     /** @var array $replacements */
     private $replacements = self::DEFAULT_REPLACEMENTS;
 
-    /** @var string */
-    private $encoding = Encoder::DEFAULT_ENCODING;
-
+    /**
+     * HeaderNormalizer constructor.
+     * @param array|null $patterns
+     * @param array|null $replacements
+     * @codeCoverageIgnore
+     */
     public function __construct(?array $patterns = null, ?array $replacements = null)
     {
         $this->patterns = $patterns ?? HeaderNormalizer::DEFAULT_PATTERNS;
@@ -41,18 +44,35 @@ class HeaderNormalizer
     }
 
     /**
-     * Add custom patterns and replacements to the defaults
+     * Add custom patterns and replacements to end of the defaults
      * @param array $pattern
      * @param array $replacements
      * @return $this
      */
-    public function addPatternReplacement(array $pattern, array $replacements): self
+    public function pushPatternReplacement(array $pattern, array $replacements): self
     {
         if (count($pattern) !== count($replacements)) {
             throw new InvalidArgumentException('Patterns and Replacements must have the same count of values.');
         }
         $this->patterns = array_merge($this->patterns, $pattern);
         $this->replacements = array_merge($this->replacements, $replacements);
+
+        return $this;
+    }
+
+    /**
+     * Add custom patterns and replacements at the begin of the defaults
+     * @param array $pattern
+     * @param array $replacements
+     * @return $this
+     */
+    public function unshiftPatternReplacement(array $pattern, array $replacements): self
+    {
+        if (count($pattern) !== count($replacements)) {
+            throw new InvalidArgumentException('Patterns and Replacements must have the same count of values.');
+        }
+        $this->patterns = array_merge($pattern, $this->patterns);
+        $this->replacements = array_merge($replacements, $this->replacements);
 
         return $this;
     }
@@ -75,6 +95,7 @@ class HeaderNormalizer
     }
 
     /**
+     * Normalize the header with the given replacement
      * @param array $header
      * @return array
      */
@@ -83,32 +104,16 @@ class HeaderNormalizer
         return array_map([$this, 'normalize'], $header);
     }
 
+    /**
+     * @param string $item
+     * @return string
+     */
     public function normalize(string $item): string
     {
         return preg_replace(
             $this->patterns,
             $this->replacements,
-            mb_strtolower($item, $this->getEncoding())
+            $item
         );
-    }
-
-    /**
-     * @return string
-     */
-    private function getEncoding(): string
-    {
-        return $this->encoding;
-    }
-
-    /**
-     * @param string $encoding
-     *
-     * @return $this
-     */
-    public function setEncoding(string $encoding): self
-    {
-        Encoder::claimValidEncoding($encoding);
-        $this->encoding = $encoding;
-        return $this;
     }
 }
