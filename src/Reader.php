@@ -392,14 +392,14 @@ class Reader implements Iterator
     }
 
     /**
-     * Check if we need to normalize Header and if so than normalize it
+     * Check if we need to normalize Header and if so than normalize it and set them to lower case
      * @param array $header
      * @return array - the original or normilzed header
      */
     private function normalizeHeader(array $header): array
     {
         if ($this->isNormalizeHeader()) {
-            return $this->normalizer->normalizeHeader($header);
+            return array_map('strtolower', $this->normalizer->normalizeHeader($header));
         }
 
         return $header;
