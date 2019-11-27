@@ -130,12 +130,9 @@ class Reader implements Iterator
         }
 
         $this->rewind();
-        $row = null;
-        do {
-            $row = $this->readRecord();
-        } while ($this->valid() && $this->getRowIndex() !== $lineIndex);
+        $this->setRecordPointerToIndex($lineIndex);
 
-        return $row;
+        return $this->readRecord();
     }
 
     /**
