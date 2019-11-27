@@ -1,11 +1,18 @@
 <?php
-declare (strict_types = 1);
+declare (strict_types=1);
 
 namespace vansari\csv\encoding;
 
 use ReflectionClass;
+use ReflectionException;
 
-class CharsetEncodings {
+/**
+ * Class CharsetEncodings - Map of all supported Encoding from php
+ * @package vansari\csv\encoding
+ * @link https://www.php.net/manual/en/mbstring.supported-encodings.php
+ */
+class CharsetEncodings
+{
     public const UCS_4 = 'UCS-4';
     public const UCS_4BE = 'UCS-4BE';
     public const UCS_4LE = 'UCS-4LE';
@@ -82,8 +89,17 @@ class CharsetEncodings {
     public const ARMSCII_8 = 'ArmSCII-8';
     public const ARMSCII8 = 'ArmSCII8';
 
-    public static function getConstants(): array {
-        $class = new ReflectionClass(CharsetEncodings::class);
-        return $class->getConstants();
+    /**
+     * Returns all Constants from this class or an empty array if reflection exception is thrown
+     * @return array
+     */
+    public static function getConstants(): array
+    {
+        try {
+            $class = new ReflectionClass(CharsetEncodings::class);
+            return $class->getConstants();
+        } catch (ReflectionException $exception) {
+            return [];
+        }
     }
 }
