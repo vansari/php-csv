@@ -220,7 +220,8 @@ class ReaderTest extends TestCase
         );
     }
 
-    public function testGetHeaderNull(): void {
+    public function testGetHeaderNull(): void
+    {
         $reader = new Reader(__DIR__ . '/testfile.csv');
         $reader->getStrategy()->setHasHeader(false);
         $header = $reader->getHeader();
@@ -333,7 +334,8 @@ class ReaderTest extends TestCase
      * @covers ::getHeader
      * @throws CsvException
      */
-    public function testGetHeaderFromTxtFile(): void {
+    public function testGetHeaderFromTxtFile(): void
+    {
         $reader = new Reader(__DIR__ . '/testfile.txt');
         $reader->getStrategy()->setDelimiter("\t");
         $this->assertSame(
@@ -342,7 +344,13 @@ class ReaderTest extends TestCase
         );
     }
 
-    public function testGetRecordTxtTabFile(): void {
+    /**
+     * @testdox Tests the record from a tab separated file
+     * @covers ::readRecord
+     * @throws CsvException
+     */
+    public function testGetRecordTxtTabFile(): void
+    {
         $reader = new Reader(__DIR__ . '/testfile.txt');
         $reader->getStrategy()->setDelimiter("\t");
         $readRecord = $reader->readRecord();
