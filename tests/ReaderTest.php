@@ -1,17 +1,17 @@
 <?php
 declare (strict_types=1);
 
-namespace vansari\csv;
+namespace csv;
 
 use OutOfRangeException;
 use PHPUnit\Framework\TestCase;
 use Throwable;
-use vansari\csv\util\HeaderNormalizer;
+use csv\util\HeaderNormalizer;
 
 /**
  * Class ReaderTest
  * @package vansari\csv
- * @coversDefaultClass \vansari\csv\Reader
+ * @coversDefaultClass \csv\Reader
  */
 class ReaderTest extends TestCase
 {

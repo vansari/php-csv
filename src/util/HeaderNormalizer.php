@@ -2,10 +2,9 @@
 declare (strict_types=1);
 
 
-namespace vansari\csv\util;
+namespace csv\util;
 
 use InvalidArgumentException;
-use vansari\csv\encoding\Encoder;
 
 /**
  * Class HeaderNormalizer - Normalize header of CSV

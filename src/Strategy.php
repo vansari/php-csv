@@ -1,9 +1,9 @@
 <?php
 declare (strict_types=1);
 
-namespace vansari\csv;
+namespace csv;
 
-use vansari\csv\encoding\Encoder;
+use csv\encoding\Encoder;
 
 class Strategy
 {

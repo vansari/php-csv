@@ -1,7 +1,7 @@
 <?php
 declare (strict_types=1);
 
-namespace vansari\csv;
+namespace csv;
 
 use Exception;
 use Throwable;

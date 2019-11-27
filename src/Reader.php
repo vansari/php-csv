@@ -1,13 +1,13 @@
 <?php
 declare (strict_types=1);
 
-namespace vansari\csv;
+namespace csv;
 
 use Iterator;
 use OutOfRangeException;
 use SplFileObject;
-use vansari\csv\encoding\Encoder;
-use vansari\csv\util\HeaderNormalizer;
+use csv\encoding\Encoder;
+use csv\util\HeaderNormalizer;
 
 /**
  * Class Reader
