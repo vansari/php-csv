@@ -7,6 +7,7 @@ use Iterator;
 use OutOfRangeException;
 use SplFileObject;
 use vansari\csv\encoding\Encoder;
+use vansari\csv\util\HeaderNormalizer;
 
 /**
  * Class Reader
@@ -57,6 +58,14 @@ class Reader implements Iterator
      */
     private $rowIndex = 0;
 
+    /** @var bool $normalizeHeader - convert Header
+     */
+    private $normalizeHeader = false;
+    /**
+     * @var HeaderNormalizer
+     */
+    private $normalizer = null;
+
     /**
      * Reader constructor.
      * @param string $file
@@ -80,15 +89,8 @@ class Reader implements Iterator
         }
 
         $this->rewind();
-        if (false === $this->linesSkipped) {
-            $skip = $this->getStrategy()->getSkipLeadingLinesCount();
-            for ($skipped = 0; $skipped < $skip; $skipped++) {
-                $this->current();
-                $this->next();
-            }
-            $this->linesSkipped = true;
-        }
-        $this->header = $this->convertRowToUtf8($this->current());
+        $this->skipLeadingLines();
+        $this->header = $this->normalizeHeader($this->convertRowToUtf8($this->current()));
         $this->headerRead = true;
         $this->next();
     }
@@ -321,6 +323,7 @@ class Reader implements Iterator
      */
     public function readRecord(): array
     {
+        $this->skipLeadingLines();
         $this->headerRead();
         $this->currentRecord = $this->current();
         if (false === $this->currentRecord) {
@@ -366,5 +369,55 @@ class Reader implements Iterator
     private function getRowIndex(): int
     {
         return $this->rowIndex;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isNormalizeHeader(): bool
+    {
+        return $this->normalizeHeader;
+    }
+
+    /**
+     * @param HeaderNormalizer $normalizer
+     * @return $this
+     */
+    public function setNormalizeHeader(HeaderNormalizer $normalizer): self
+    {
+        $this->normalizeHeader = true;
+        $this->normalizer = $normalizer;
+
+        return $this;
+    }
+
+    /**
+     * Check if we need to normalize Header and if so than normalize it
+     * @param array $header
+     * @return array - the original or normilzed header
+     */
+    private function normalizeHeader(array $header): array
+    {
+        if ($this->isNormalizeHeader()) {
+            return $this->normalizer->normalizeHeader($header);
+        }
+
+        return $header;
+    }
+
+    /**
+     * Skip leading lines if it was not done
+     */
+    public function skipLeadingLines(): void
+    {
+        if (false === $this->linesSkipped) {
+            $this->rewind();
+            $skip = $this->getStrategy()->getSkipLeadingLinesCount();
+            for ($skipped = 0; $skipped < $skip; $skipped++) {
+                $this->current();
+                $this->next();
+            }
+            $this->linesSkipped = true;
+        }
     }
 }

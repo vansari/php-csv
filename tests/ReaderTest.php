@@ -6,9 +6,55 @@ namespace vansari\csv;
 use OutOfRangeException;
 use PHPUnit\Framework\TestCase;
 use Throwable;
+use vansari\csv\util\HeaderNormalizer;
 
+/**
+ * Class ReaderTest
+ * @package vansari\csv
+ * @coversDefaultClass \vansari\csv\Reader
+ */
 class ReaderTest extends TestCase
 {
+    private $expectedNormalizedHeader = [
+        'emp_id',
+        'name_prefix',
+        'first_name',
+        'middle_initial',
+        'last_name',
+        'gender',
+        'e_mail',
+        'father_s_name',
+        'mother_s_name',
+        'mother_s_maiden_name',
+        'date_of_birth',
+        'time_of_birth',
+        'age_in_yrs',
+        'weight_in_kgs',
+        'date_of_joining',
+        'quarter_of_joining',
+        'half_of_joining',
+        'year_of_joining',
+        'month_of_joining',
+        'month_name_of_joining',
+        'short_month',
+        'day_of_joining',
+        'dow_of_joining',
+        'short_dow',
+        'age_in_company_years',
+        'salary',
+        'last_hike',
+        'ssn',
+        'phone_no',
+        'place_name',
+        'county',
+        'city',
+        'state',
+        'zip',
+        'region',
+        'user_name',
+        'password',
+    ];
+
     /** @var array */
     private $expectedHeader = [
         'Emp ID',
@@ -145,7 +191,8 @@ class ReaderTest extends TestCase
     ];
 
     /**
-     * @testdox Tests if we can retrieve the Header if hasHeader returns true otherwise null
+     * @testdox Tests if we can retrieve the Header
+     * @covers ::getHeader
      */
     public function testGetHeader(): void
     {
@@ -157,6 +204,33 @@ class ReaderTest extends TestCase
         );
     }
 
+    /**
+     * @testdox Get the Header as normalized array
+     * @throws CsvException
+     * @covers ::getHeader
+     */
+    public function testGetHeaderNormalized(): void
+    {
+        $reader = new Reader(__DIR__ . '/testfile.csv');
+        $reader->setNormalizeHeader(new HeaderNormalizer());
+        $header = $reader->getHeader();
+        $this->assertSame(
+            $this->expectedNormalizedHeader,
+            $header
+        );
+    }
+
+    public function testGetHeaderNull(): void {
+        $reader = new Reader(__DIR__ . '/testfile.csv');
+        $reader->getStrategy()->setHasHeader(false);
+        $header = $reader->getHeader();
+        $this->assertEmpty($header);
+    }
+
+    /**
+     * @throws CsvException
+     * @covers ::getHeader
+     */
     public function testGetHeaderFailed(): void
     {
         $reader = new Reader(__DIR__ . '/testfile.csv');
