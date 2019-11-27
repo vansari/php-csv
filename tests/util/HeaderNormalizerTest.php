@@ -1,14 +1,14 @@
 <?php
 declare (strict_types=1);
 
-namespace vansari\csv\util;
+namespace csv\util;
 
 use PHPUnit\Framework\TestCase;
 
 /**
  * Class HeaderNormalizerTest
  * @package util
- * @coversDefaultClass \vansari\csv\util\HeaderNormalizer
+ * @coversDefaultClass \csv\util\HeaderNormalizer
  */
 class HeaderNormalizerTest extends TestCase
 {
