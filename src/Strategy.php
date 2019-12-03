@@ -4,6 +4,7 @@ declare (strict_types=1);
 namespace csv;
 
 use csv\encoding\Encoder;
+use InvalidArgumentException;
 
 class Strategy
 {
@@ -95,12 +96,17 @@ class Strategy
     }
 
     /**
-     * @param string $delimiter
+     * Sets the Delimiter
+     * Please use double quotes to ensure that delimiter works as expected
+     * @param string $delimiter - One Character delimiter ex. ";", "|", ",", "\t"
      *
      * @return $this
      */
     public function setDelimiter(string $delimiter): self
     {
+        if (1 !== strlen($delimiter) || "\n" === $delimiter) {
+            throw new InvalidArgumentException('Delimiter must be only one character and not a new line.');
+        }
         $this->delimiter = $delimiter;
 
         return $this;
