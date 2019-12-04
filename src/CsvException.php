@@ -19,6 +19,7 @@ class CsvException extends Exception
         ERROR_PARAM_EMPTY_STRING = 21;
 
     public const ERROR_READ = 30;
+    public const ERROR_WRITE = 40;
 
     /**
      * @param string $message
@@ -60,5 +61,13 @@ class CsvException extends Exception
         ?Throwable $previousException = null
     ): self {
         return new self($message ?? 'Unknown Error while reading the record.', $code, $previousException);
+    }
+
+    public static function writeError(
+        ?string $message = null,
+        int $code = self::ERROR_WRITE,
+        ?Throwable $previousException = null
+    ): self {
+        return new self($message ?? 'Unknown Error while writing the record.', $code, $previousException);
     }
 }

@@ -53,11 +53,6 @@ class Reader implements Iterator
      */
     private $strategy;
 
-    /**
-     * @var int
-     */
-    private $rowIndex = 0;
-
     /** @var bool $normalizeHeader - convert Header
      */
     private $normalizeHeader = false;
@@ -125,16 +120,23 @@ class Reader implements Iterator
         if (0 > $lineIndex) {
             throw new OutOfRangeException('$lineIndex must be a non negativ Integer.');
         }
-        if (($rowCount = $this->getRecordCount()) < $lineIndex) {
+
+        if (0 > ($rowCount = $this->getRecordCount())) {
+            throw new \InvalidArgumentException('File does not contain any records.');
+        }
+        if ($rowCount < $lineIndex) {
             throw new OutOfRangeException(
-                '$lineIndex is greater than the row count. File contains ' . $rowCount . ' rows.'
+                '$lineIndex is greater than the row count. File contains ' . $rowCount . ' records.'
             );
         }
 
-        $this->rewind();
+        // First Read Header because it used a rewind()
+        $this->headerRead();
         $this->setRecordPointerToIndex($lineIndex);
 
-        return $this->readRecord();
+        $record = $this->readRecord();
+
+        return $record;
     }
 
     /**
@@ -149,18 +151,26 @@ class Reader implements Iterator
         if (0 > $rowIndexStart) {
             throw new OutOfRangeException('$rowIndexStart must be a non negativ Integer.');
         }
-        if (($rowCount = $this->getRecordCount()) < $rowIndexStop) {
+
+        if (0 > ($rowCount = $this->getRecordCount())) {
+            throw new \InvalidArgumentException('File does not contain any records.');
+        }
+        if ($rowCount < $rowIndexStop) {
             throw new OutOfRangeException(
-                '$rowIndexStop is greater than the row count. File contains ' . $rowCount . ' rows.'
+                '$rowIndexStop is greater than the row count. File contains ' . $rowCount . ' records.'
             );
         }
         $records = [];
+        // First Read Header because it used a rewind()
+        $this->headerRead();
         // Set the record pointer to the start index
         $this->setRecordPointerToIndex($rowIndexStart);
-
-        do {
-            $records[] = $this->readRecord();
-        } while ($this->valid() && $this->getRowIndex() !== $rowIndexStop);
+        while (null !== ($record = $this->readRecord())) {
+            $records[] = $record;
+            if ($this->key() === $rowIndexStop) {
+                break;
+            }
+        }
 
         return $records;
     }
@@ -174,8 +184,8 @@ class Reader implements Iterator
     {
         $records = [];
         $this->rewind();
-        while ($this->valid()) {
-            $records[] = $this->readRecord();
+        while (null !== ($record = $this->readRecord())) {
+            $records[] = $record;
         }
 
         return $records;
@@ -262,7 +272,6 @@ class Reader implements Iterator
      */
     public function next()
     {
-        $this->rowIndex++;
         $this->fileObject->next();
     }
 
@@ -297,7 +306,6 @@ class Reader implements Iterator
      */
     public function rewind()
     {
-        $this->rowIndex = 0;
         $this->fileObject->rewind();
     }
 
@@ -307,40 +315,45 @@ class Reader implements Iterator
      */
     public function getRecordCount(): int
     {
-        while ($this->valid()) {
-            $this->readRecord();
-        }
+        $this->fileObject->seek(PHP_INT_MAX);
+        $lineCount = $this->getStrategy()->hasHeader()
+            ? $this->fileObject->key() - 1
+            : $this->fileObject->key();
 
-        return ($this->getStrategy()->hasHeader()) ? $this->rowIndex - 1 : $this->rowIndex;
+        $this->rewind();
+        return $lineCount;
     }
 
     /**
      * Read the current row and convert them to UTF-8 and moves the pointer to the next Record
      * Skip empty lines if it is set
      *
-     * @return array
+     * @return null|array
      * @throws CsvException
      */
-    public function readRecord(): array
+    public function readRecord(): ?array
     {
         $this->skipLeadingLines();
         $this->headerRead();
         $this->currentRecord = $this->current();
+
         if (false === $this->currentRecord) {
             throw CsvException::readError(error_get_last()['message'] ?? null);
         }
-        $this->next();
-        if ($this->getStrategy()->doSkipEmptyLines()) {
-            while ($this->valid() && [] === $this->currentRecord) {
-                $this->readRecord();
+        if ($this->valid()) {
+            if ($this->getStrategy()->doSkipEmptyLines()) {
+                while (null !== $this->currentRecord && [] === array_filter($this->currentRecord)) {
+                    $this->readRecord();
+                }
             }
+            if ($this->getStrategy()->hasHeader() && $this->getStrategy()->asAssociative()) {
+                $this->currentRecord = array_combine($this->getHeader(), $this->currentRecord);
+            }
+            $this->next();
+            return $this->convertRowToUtf8($this->currentRecord);
         }
 
-        if ($this->getStrategy()->hasHeader() && $this->getStrategy()->asAssociative()) {
-            $this->currentRecord = array_combine($this->getHeader(), $this->currentRecord);
-        }
-
-        return $this->convertRowToUtf8($this->currentRecord);
+        return null;
     }
 
     /**
@@ -357,18 +370,9 @@ class Reader implements Iterator
      */
     private function setRecordPointerToIndex(int $index): void
     {
+        $index = $this->getStrategy()->hasHeader() ? $index - 1 : $index;
         $this->rewind();
-        while ($this->valid() && $this->getRowIndex() < $index) {
-            $this->readRecord();
-        }
-    }
-
-    /**
-     * @return int
-     */
-    private function getRowIndex(): int
-    {
-        return $this->rowIndex;
+        $this->fileObject->seek($index);
     }
 
     /**
@@ -419,5 +423,16 @@ class Reader implements Iterator
             }
             $this->linesSkipped = true;
         }
+    }
+
+    /**
+     * @param Strategy $strategy
+     *
+     * @return $this
+     */
+    public function setStrategy(Strategy $strategy): self
+    {
+        $this->strategy = $strategy;
+        return $this;
     }
 }
