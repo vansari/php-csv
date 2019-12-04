@@ -11,6 +11,9 @@ use SplFileObject;
 
 class Writer
 {
+    /**
+     * @var Strategy
+     */
     private $strategy;
 
     /**
@@ -35,26 +38,30 @@ class Writer
      * @var bool
      */
     private $headerWrote;
-    /**
-     * @var string
-     */
-    private $file;
+
     /**
      * @var string
      */
     private $targetPath;
 
     /**
+     * @var bool
+     */
+    private $append;
+
+    /**
      * Writer constructor.
-     * @param string $filename
      * @param string $targetPath
+     * @param string $filename
+     * @param bool $append
      * @throws Exception
      */
-    public function __construct(string $targetPath, ?string $filename = null)
+    public function __construct(string $targetPath, ?string $filename = null, bool $append = false)
     {
         $this->strategy = Strategy::createStrategy();
-        $this->setFileObject($filename);
         $this->targetPath = $targetPath;
+        $this->append = $append;
+        $this->setFileObject($filename);
     }
 
     /**
@@ -82,11 +89,11 @@ class Writer
     private function setFileObject(?string $filename = null): self
     {
         if (null === $filename || '' === $filename) {
-            $filename = (new \DateTime())->format('Ymd_his') . '_' . uniqid(mt_rand(0, 200)) . '.csv';
+            $filename = (new \DateTime())->format('Ymd_his') . '_' . uniqid((string)mt_rand(0, 200)) . '.csv';
         }
-        $filepath = sys_get_temp_dir();
+        $filepath = $this->doAppend() ? $this->targetPath : sys_get_temp_dir();
         $filepath .= DIRECTORY_SEPARATOR . $filename;
-        $this->fileObject = new SplFileObject($filepath, 'w+');
+        $this->fileObject = new SplFileObject($filepath, $this->doAppend() ? 'a': 'w');
 
         return $this;
     }
@@ -98,7 +105,7 @@ class Writer
      */
     public function getTempCsvFilePath(): string
     {
-        return $this->fileObject->getPath();
+        return $this->fileObject->getPathname();
     }
 
     /**
@@ -114,9 +121,10 @@ class Writer
         $filtered = array_filter(
             $header,
             function ($field): bool {
-                return null !== $field && is_string($field) && '' === $field;
+                return null !== $field && is_string($field) && '' !== $field;
             }
         );
+
         if (count($filtered) != count($header)) {
             throw new InvalidArgumentException('The header was modified while checking fields.');
         }
@@ -183,6 +191,9 @@ class Writer
     private function writeHeader(): void
     {
         if ($this->getStrategy()->hasHeader()) {
+            if ($this->headerWrote) {
+                return;
+            }
             if (empty($this->header)) {
                 throw new InvalidArgumentException('Tried to write header but it was empty.');
             }
@@ -224,14 +235,25 @@ class Writer
      */
     public function writeRecord(array $row): bool
     {
-        if ($this->getStrategy()->hasHeader()) {
+        // Do not write Header again if the System want to append lines
+        if (false === $this->doAppend() && $this->getStrategy()->hasHeader()) {
             if (count($row) !== count($this->header)) {
                 throw new InvalidArgumentException(
                     'Record count does not match the header field count: ' . implode(', ', $row)
                 );
             }
-            if (false === $this->headerWrote) {
-                $this->writeHeader();
+            $this->writeHeader();
+        }
+
+        // But be sure that this $row has same field count like the first row in CSV
+        if ($this->doAppend()) {
+            $firstRecordInCsv = (new Reader($this->getTempCsvFilePath()))
+                ->setStrategy($this->getStrategy())
+                ->readRecordAtIndex(1);
+            if (count($row) !== count($firstRecordInCsv)) {
+                throw new InvalidArgumentException(
+                    'Record count does not match the header field count: ' . implode(', ', $row)
+                );
             }
         }
 
@@ -246,7 +268,7 @@ class Writer
             throw CsvException::writeError();
         }
 
-        return 1 === $wroteLine;
+        return 0 < $wroteLine;
     }
 
     /**
@@ -264,5 +286,24 @@ class Writer
         if (false === rename($this->getTempCsvFilePath(), $this->getCsvFilePath())) {
             throw new Exception('Could not move file from tmp to target directory.');
         }
+    }
+
+    /**
+     * @return bool
+     */
+    public function doAppend(): bool
+    {
+        return $this->append;
+    }
+
+    /**
+     * @param Strategy $strategy
+     *
+     * @return $this
+     */
+    public function setStrategy(Strategy $strategy): self
+    {
+        $this->strategy = $strategy;
+        return $this;
     }
 }

@@ -259,13 +259,14 @@ class ReaderTest extends TestCase
     public function testGetRecordCount(): void
     {
         $reader = new Reader(__DIR__ . '/testfile.csv');
-        $this->assertSame(100, $reader->getRecordCount());
+        $this->assertSame(99, $reader->getRecordCount());
     }
 
     public function testReadAllRecords(): void
     {
         $reader = new Reader(__DIR__ . '/testfile.csv');
-        $this->assertCount(100, $reader->readAllRecords());
+        // testfile has 6 empty Lines and a header
+        $this->assertCount(93, $reader->readAllRecords());
     }
 
     public function testReadRecordAtIndex(): void
@@ -284,7 +285,7 @@ class ReaderTest extends TestCase
         } catch (Throwable $exception) {
             $this->assertInstanceOf(OutOfRangeException::class, $exception);
             $this->assertSame(
-                '$lineIndex is greater than the row count. File contains 100 rows.',
+                '$lineIndex is greater than the row count. File contains 99 records.',
                 $exception->getMessage()
             );
         }
@@ -317,7 +318,7 @@ class ReaderTest extends TestCase
         } catch (Throwable $exception) {
             $this->assertInstanceOf(OutOfRangeException::class, $exception);
             $this->assertSame(
-                '$rowIndexStop is greater than the row count. File contains 100 rows.',
+                '$rowIndexStop is greater than the row count. File contains 99 records.',
                 $exception->getMessage()
             );
         }
