@@ -325,6 +325,18 @@ class Reader implements Iterator
     }
 
     /**
+     * Returns the number of fields from first row and set the pointer back to start
+     * @return int
+     * @throws CsvException
+     */
+    public function getFieldCount(): int {
+        $record = $this->readRecord();
+        $this->rewind();
+
+        return null === $record ? 0 : count($record);
+    }
+
+    /**
      * Read the current row and convert them to UTF-8 and moves the pointer to the next Record
      * Skip empty lines if it is set
      *
