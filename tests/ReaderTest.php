@@ -360,4 +360,15 @@ class ReaderTest extends TestCase
             $readRecord
         );
     }
+
+    /**
+     * @testdox Test the field counter
+     * @covers ::getFieldCount
+     * @throws CsvException
+     */
+    public function testGetFieldCount(): void
+    {
+        $reader = new Reader(__DIR__ . '/testfile.csv');
+        $this->assertSame(count($this->expectedFirstRecord), $reader->getFieldCount());
+    }
 }
