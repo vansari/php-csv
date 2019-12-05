@@ -331,6 +331,8 @@ class Reader implements Iterator
      */
     public function getFieldCount(): int {
         $record = $this->readRecord();
+        // ensure that the header can be read again after field count
+        $this->headerRead = false;
         $this->rewind();
 
         return null === $record ? 0 : count($record);
