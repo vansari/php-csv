@@ -325,7 +325,7 @@ class Reader implements Iterator
     }
 
     /**
-     * Returns the number of fields
+     * Returns the number of fields from first row and set the pointer back to start
      * @return int
      * @throws CsvException
      */
