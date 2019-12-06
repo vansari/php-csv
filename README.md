@@ -4,7 +4,7 @@ Simple CSV Reader/Writer as a learning project.
 Please be careful if you're using this project in production. It is possible that the logic will be changed from one day to another :-/
 
 You can use like this:
-
+'''php
 $reader = new Reader($filepath);
 // now that the strategy how to read the csv
 $reader->getStrategy()
@@ -15,3 +15,4 @@ $reader->getStrategy()
 
 // you have also the possibility to instances a new Strategy object
 $strategy = Strategy::create(); // with default values
+'''
