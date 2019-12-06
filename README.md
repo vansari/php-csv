@@ -6,13 +6,15 @@ Please be careful if you're using this project in production. It is possible tha
 You can use like this:
 ```php
 $reader = new Reader($filepath);
-// now that the strategy how to read the csv
+// now set the strategy how to read the csv
 $reader->getStrategy()
     ->setDelimiter("\t")
     ->setEncoding(CharsetEncoding::ISO_8859_1) // the encoding of the file
-    ->setHasHeader(false) // if csv doesn't contains header
+    ->setHasHeader(false) // if csv doesn't contain header
     ->setSkipEmptyRecords(true);
 
 // you have also the possibility to instances a new Strategy object
 $strategy = Strategy::create(); // with default values
+
 ```
+[to be continue]
